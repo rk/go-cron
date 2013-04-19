@@ -2,7 +2,7 @@
   This package implements a simplistic Cron Job system that calls functions and
   closures on given days/times. If you need events that fire more often than
   once a second, use time.Ticker or time.After instead. The event must be able
-  to accept a *Time object (though it doesn't have to use it).
+  to accept a Time object (though it doesn't have to use it).
 
   ---------------------------------------------------------------------------------------
 
@@ -33,18 +33,28 @@
   or implied, of Robert Kosek.
 */
 
+/*
+ mdr mods
+  1)	Replaced -1 by ANY for readability improvement
+  2)	Changed *time.Time to time.Time  WHY: pointer to time struct useful if you
+  need to change something that gets back to the caller.  Not the case here. Otherwise
+  go style (as I understand it) suggests not using pointers if not required.
+  3)	Added cron_test.go example of usage 
+ */
+
 package cron
 
 import (
-  . "time"
-  "syscall"
+  "time"
 )
 
 type job struct {
   Month, Day, Weekday  int8
   Hour, Minute, Second int8
-  Task                 func(*Time)
+  Task                 func(time.Time)
 }
+
+const ANY = -1	// mod by MDR
 
 var jobs []job
 
@@ -52,47 +62,47 @@ var jobs []job
 // 24hour time. Any of the values may be -1 as an "any" match, so passing in
 // a day of -1, the event occurs every day; passing in a second value of -1, the
 // event will fire every second that the other parameters match.
-func NewCronJob(month, day, weekday, hour, minute, second int8, task func(*Time)) {
+func NewCronJob(month, day, weekday, hour, minute, second int8, task func(time.Time)) {
   cj := job{month, day, weekday, hour, minute, second, task}
   jobs = append(jobs, cj)
 }
 
 // This creates a job that fires monthly at a given time on a given day.
-func NewMonthlyJob(day, hour, minute, second int8, task func(*Time)) {
-  NewCronJob(-1, day, -1, hour, minute, second, task)
+func NewMonthlyJob(day, hour, minute, second int8, task func(time.Time)) {
+  NewCronJob(ANY, day, ANY, hour, minute, second, task)
 }
 
 // This creates a job that fires on the given day of the week and time.
-func NewWeeklyJob(weekday, hour, minute, second int8, task func(*Time)) {
-  NewCronJob(-1, -1, weekday, hour, minute, second, task)
+func NewWeeklyJob(weekday, hour, minute, second int8, task func(time.Time)) {
+  NewCronJob(ANY, ANY, weekday, hour, minute, second, task)
 }
 
 // This creates a job that fires daily at a specified time.
-func NewDailyJob(hour, minute, second int8, task func(*Time)) {
-  NewCronJob(-1, -1, -1, hour, minute, second, task)
+func NewDailyJob(hour, minute, second int8, task func(time.Time)) {
+  NewCronJob(ANY, ANY, ANY, hour, minute, second, task)
 }
 
-func (cj job) Matches(t *Time) (ok bool) {
-  ok = (cj.Month == -1 || cj.Month == int8(t.Month)) &&
-    (cj.Day == -1 || cj.Day == int8(t.Day)) &&
-    (cj.Weekday == -1 || cj.Weekday == int8(t.Weekday)) &&
-    (cj.Hour == -1 || cj.Hour == int8(t.Hour)) &&
-    (cj.Minute == -1 || cj.Minute == int8(t.Minute)) &&
-    (cj.Second == -1 || cj.Second == int8(t.Second))
+func (cj job) Matches(t time.Time) (ok bool) {
+  ok = (cj.Month == ANY || cj.Month == int8(t.Month())) &&
+    (cj.Day == ANY || cj.Day == int8(t.Day())) &&
+    (cj.Weekday == ANY || cj.Weekday == int8(t.Weekday())) &&
+    (cj.Hour == ANY || cj.Hour == int8(t.Hour())) &&
+    (cj.Minute == ANY || cj.Minute == int8(t.Minute())) &&
+    (cj.Second == ANY || cj.Second == int8(t.Second()))
 
-  return
+  return ok
 }
 
 func processJobs() {
   for {
-    now := LocalTime()
+    now := time.Now()
     for _, j := range jobs {
       // execute all our cron tasks asynchronously
       if j.Matches(now) {
         go j.Task(now)
       }
     }
-    syscall.Sleep(1e9) // 1 second
+    time.Sleep(time.Second)
   }
 }
 
