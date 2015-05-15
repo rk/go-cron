@@ -46,6 +46,8 @@ package cron
 
 import (
   "time"
+  "log"
+  "os"
 )
 
 type job struct {
@@ -58,6 +60,8 @@ const ANY = -1	// mod by MDR
 
 var jobs []job
 
+var info *log.Logger
+
 // This function creates a new job that occurs at the given day and the given
 // 24hour time. Any of the values may be -1 as an "any" match, so passing in
 // a day of -1, the event occurs every day; passing in a second value of -1, the
@@ -65,6 +69,7 @@ var jobs []job
 func NewCronJob(month, day, weekday, hour, minute, second int8, task func(time.Time)) {
   cj := job{month, day, weekday, hour, minute, second, task}
   jobs = append(jobs, cj)
+  info.Printf("Registering new Job at Month %d, Day %d, Hour %d, Minute %d, Second %d\n", month, day, hour, minute, second)
 }
 
 // This creates a job that fires monthly at a given time on a given day.
@@ -99,6 +104,7 @@ func processJobs() {
     for _, j := range jobs {
       // execute all our cron tasks asynchronously
       if j.Matches(now) {
+        info.Println("Executing a job.")
         go j.Task(now)
       }
     }
@@ -107,5 +113,6 @@ func processJobs() {
 }
 
 func init() {
+  info = log.New(os.Stdout,"[ go-cron ]",log.Ldate|log.Ltime)
   go processJobs()
 }
