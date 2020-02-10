@@ -10,7 +10,7 @@ For instance, you can use the following in your web application that uses
 MySQL:
 
     func init() {
-      cron.NewWeeklyJob(1, 23, 59, 59, func (*time.Time) {
+      cron.NewWeeklyJob(1, 23, 59, 59, func (time.Time) {
         _, err := conn.Query("OPTIMIZE TABLE mytable;")
         if(err != nil) { println(err) }
       })
